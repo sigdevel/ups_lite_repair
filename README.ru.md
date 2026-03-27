@@ -2,6 +2,10 @@
 
 Проект возвращает поддержку плагина `ups_lite.py` для плат XiaoJ/ACE UPS Lite с чипом `0x62` (`CW2015`) и предотвращает ложные выключения из-за невалидных 0-read
 
+<img src="https://github.com/sigdevel/ups_lite_repair/blob/master/2026-03-27_15-25.png?raw=true"
+     alt="screen"
+     width="25%">
+
 Файлы:
 
 - `ups_lite.py` - текущая модифицированная версия оригинального плагина  
