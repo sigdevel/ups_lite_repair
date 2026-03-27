@@ -1,0 +1,84 @@
+--- ups_lite.py.orig
++++ ups_lite.py
+@@ -28,11 +28,36 @@
+         import smbus
+         # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
+         self._bus = smbus.SMBus(1)
++        self._address = None
++        self._chip = None
++        self._detect_device()
++
++    def _detect_device(self):
++        # Older UPS-Lite boards expose MAX17040-compatible registers on 0x36.
++        # Newer XiaoJ/ACE revisions commonly expose a CW2015-compatible chip on 0x62.
++        for address in (0x62, 0x36):
++            try:
++                self._bus.read_byte(address)
++                self._address = address
++                self._chip = 'cw2015' if address == 0x62 else 'max17040'
++                logging.info('[ups_lite] detected battery gauge at 0x%02x (%s)', address, self._chip)
++                if self._chip == 'cw2015':
++                    # Recommended mode write for CW2015-based boards.
++                    self._bus.write_word_data(self._address, 0x0A, 0x30)
++                return
++            except Exception:
++                continue
++        logging.warning('[ups_lite] no supported UPS battery gauge found on i2c bus')
+ 
+     def voltage(self):
+         try:
+-            address = 0x36
+-            read = self._bus.read_word_data(address, 2)
++            if self._address is None:
++                return 0.0
++            if self._chip == 'cw2015':
++                read = self._bus.read_word_data(self._address, 2)
++                swapped = struct.unpack("<H", struct.pack(">H", read))[0]
++                return swapped * 0.305 / 1000
++            read = self._bus.read_word_data(self._address, 2)
+             swapped = struct.unpack("<H", struct.pack(">H", read))[0]
+             return swapped * 1.25 / 1000 / 16
+         except:
+@@ -40,8 +65,11 @@
+ 
+     def capacity(self):
+         try:
+-            address = 0x36
+-            read = self._bus.read_word_data(address, 4)
++            if self._address is None:
++                return 0.0
++            if self._chip == 'cw2015':
++                return self._bus.read_byte_data(self._address, 0x04)
++            read = self._bus.read_word_data(self._address, 4)
+             swapped = struct.unpack("<H", struct.pack(">H", read))[0]
+             return swapped / 256
+         except:
+@@ -54,6 +82,11 @@
+             return '+' if GPIO.input(4) == GPIO.HIGH else '-'
+         except:
+             return '-'
++
++    def has_valid_reading(self):
++        capacity = self.capacity()
++        voltage = self.voltage()
++        return not (capacity == 0 and voltage == 0.0)
+ 
+ 
+ class UPSLite(plugins.Plugin):
+@@ -79,9 +112,14 @@
+     def on_ui_update(self, ui):
+         capacity = self.ups.capacity()
+         charging = self.ups.charging()
+-        ui.set('ups', "%2i%s" % (capacity, charging))
++        if self.ups.has_valid_reading():
++            ui.set('ups', "%2i%s" % (capacity, charging))
++        else:
++            ui.set('ups', "--?")
++            logging.warning('[ups_lite] invalid battery reading from %s, skipping shutdown logic', self.ups._chip or 'unknown gauge')
++            return
+ 
+-        if capacity <= self.options['shutdown']:
++        if self.ups._address is not None and capacity <= self.options['shutdown']:
+             logging.info('[ups_lite] Empty battery (<= %s%%): shuting down' % self.options['shutdown'])
+             ui.update(force=True, new_data={'status': 'Battery exhausted, bye ...'})
+             pwnagotchi.shutdown()
