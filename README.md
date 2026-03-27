@@ -2,13 +2,15 @@
 
 This bundle contains a patched `ups_lite.py` plugin that adds support for XiaoJ/ACE UPS Lite boards using the `0x62` (`CW2015`) battery gauge and prevents false shutdowns caused by invalid zero readings
 
+<img src="https://github.com/sigdevel/ups_lite_repair/blob/master/2026-03-27_15-25.png?raw=true"
+     alt="screen"
+     width="25%">
+     
 Files:
 
-- `ups_lite.py` - the current modified version of the original plugin  
-  https://github.com/evilsocket/pwnagotchi/blob/master/pwnagotchi/plugins/default/ups_lite.py
+- `ups_lite.py` - the current modified version of the [original plugin](https://github.com/evilsocket/pwnagotchi/blob/master/pwnagotchi/plugins/default/ups_lite.py)
 - `ups_lite.patch` - a unified diff against the original `ups_lite.py`  
-  https://github.com/evilsocket/pwnagotchi/blob/master/pwnagotchi/plugins/default/ups_lite.py
-- `apply_patch.py` - a safe script to apply the patch to the original file
+- `apply_patch.py` - a safe script to apply the patch
 
 What the patch changes:
 
